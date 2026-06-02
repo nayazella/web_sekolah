@@ -15,7 +15,6 @@ require_once __DIR__ . '/../../includes/header.php';
 require_once __DIR__ . '/../../includes/sidebar.php';
 ?>
 
-<!-- 1. LINK CSS OVERRIDE: Memaksa browser memuat CSS terbaru -->
 <link rel="stylesheet" href="../../assets/css/style.css?v=<?php echo time(); ?>">
 
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -24,8 +23,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
     <?php require_once __DIR__ . '/../../includes/topbar.php'; ?>
 
     <div class="content">
-        
-        <!-- 2. DIBUNGKUS DENGAN CONTAINER AGAR UKURANNYA PROPORSIONAL -->
         <div class="dashboard-container">
 
             <?php if ($flash): ?>
@@ -35,7 +32,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 </div>
             <?php endif; ?>
 
-            <!-- 3. DIUBAH: Menjadi Banner Hijau dengan tombol di dalamnya -->
             <div class="page-header-banner" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
                 <div>
                     <h1><i class="fas fa-tags" style="margin-right: 0.5rem;"></i> Kelola Kategori Informasi</h1>
@@ -46,7 +42,6 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 </div>
             </div>
 
-            <!-- Tabel Kategori -->
             <div class="card">
                 <div class="card-body" style="padding:0;">
                     <?php if (empty($kategori_list)): ?>
@@ -63,7 +58,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         <th>No</th>
                                         <th>Nama Kategori</th>
                                         <th>Deskripsi</th>
-                                        <th>Jumlah Informasi</th>
+                                        <th>Informasi Terkait</th>
                                         <th>Aksi</th>
                                     </tr>
                                 </thead>
@@ -74,7 +69,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         <td><strong><?php echo htmlspecialchars($kat['nama_kategori']); ?></strong></td>
                                         <td><?php echo htmlspecialchars($kat['deskripsi'] ?? '-'); ?></td>
                                         <td>
-                                            <span class="badge badge-primary"><?php echo $kat['jumlah_informasi']; ?> informasi</span>
+                                            <span class="badge badge-primary" style="cursor: pointer; font-size: 0.85rem; padding: 6px 12px;" onclick="openListInformasi(<?php echo $kat['id_kategori']; ?>, '<?php echo htmlspecialchars(addslashes($kat['nama_kategori'])); ?>')">
+                                                <?php echo $kat['jumlah_informasi']; ?> informasi <i class="fas fa-arrow-right" style="margin-left:5px;"></i>
+                                            </span>
                                         </td>
                                         <td>
                                             <div class="action-btns">
@@ -95,7 +92,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 </div>
             </div>
 
-        </div> <!-- Penutup dashboard-container -->
+        </div>
     </div>
 </div>
 
@@ -123,6 +120,22 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                 <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Simpan</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Modal Daftar Informasi per Kategori -->
+<div class="modal-overlay" id="listInformasiModal">
+    <div class="modal" style="max-width: 700px;">
+        <div class="modal-header">
+            <h3 id="listInfoTitle">Informasi dalam Kategori</h3>
+            <button class="modal-close" onclick="closeModal('listInformasiModal')"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" id="listInfoBody" style="max-height: 65vh; overflow-y: auto;">
+            <p>Memuat data...</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('listInformasiModal')">Tutup</button>
+        </div>
     </div>
 </div>
 
@@ -192,6 +205,82 @@ function deleteKategori(id) {
             }
         });
     }
+}
+
+// FUNGSI MODAL LIST INFORMASI (DENGAN TOMBOL HAPUS)
+function openListInformasi(id_kategori, nama_kategori) {
+    document.getElementById('listInfoTitle').innerText = `Informasi Kategori: ${nama_kategori}`;
+    document.getElementById('listInfoBody').innerHTML = '<p>Memuat data informasi...</p>';
+    openModal('listInformasiModal');
+
+    fetch(`/web_sekolah/actions/kategori_action.php?action=list_informasi&id=${id_kategori}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                let html = '';
+                if (data.data.length === 0) {
+                    html = '<div class="empty-state" style="padding:20px 0;"><i class="fas fa-inbox"></i><h3>Kosong</h3><p>Belum ada informasi di kategori ini.</p></div>';
+                } else {
+                    html = '<div style="display:flex; flex-direction:column; gap:12px;">';
+                    const statusBadge = {'draft':'badge-secondary','menunggu_persetujuan':'badge-warning','disetujui':'badge-success','ditolak':'badge-danger'};
+                    const statusLabel = {'draft':'Draft','menunggu_persetujuan':'Menunggu','disetujui':'Disetujui','ditolak':'Ditolak'};
+
+                    data.data.forEach(info => {
+                        // PERBAIKAN: Layout flex agar tombol hapus sejajar di kanan
+                        html += `
+                            <div id="info-row-${info.id_info}" style="border:1px solid #e0e0e0; padding:15px; border-radius:8px; background:#ffffff; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                <div style="flex:1; margin-right:15px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:5px;">
+                                        <strong style="font-size:1.05rem; color:#2c3e50;">${info.judul}</strong>
+                                        <span class="badge ${statusBadge[info.status] || 'badge-secondary'}">${statusLabel[info.status] || info.status}</span>
+                                    </div>
+                                    <div style="font-size:0.85rem; color:#7f8c8d; display:flex; gap:15px; flex-wrap:wrap;">
+                                        <span><i class="fas fa-user"></i> ${info.penulis || 'Tidak diketahui'}</span>
+                                        <span><i class="fas fa-calendar-alt"></i> ${info.tanggal || '-'}</span>
+                                    </div>
+                                </div>
+                                <button class="btn btn-sm btn-danger" onclick="deleteInfoFromKategori(${info.id_info})" title="Hapus Informasi" style="flex-shrink:0;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+                document.getElementById('listInfoBody').innerHTML = html;
+            } else {
+                document.getElementById('listInfoBody').innerHTML = '<p style="color:red;">Gagal memuat data.</p>';
+            }
+        })
+        .catch(() => showToast('Terjadi kesalahan jaringan!', 'error'));
+}
+
+// FUNGSI HAPUS INFORMASI DARI MODAL KATEGORI
+function deleteInfoFromKategori(id_info) {
+    if (!confirm('Yakin ingin menghapus informasi ini secara permanen?')) return;
+
+    fetch('/web_sekolah/actions/informasi_action.php?action=delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'id_info=' + id_info
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || 'Informasi berhasil dihapus!', 'success');
+            // Hilangkan baris informasi dari modal dengan animasi
+            const row = document.getElementById('info-row-' + id_info);
+            if (row) {
+                row.style.opacity = '0';
+                row.style.transform = 'translateX(20px)';
+                row.style.transition = 'all 0.3s ease';
+                setTimeout(() => row.remove(), 300);
+            }
+        } else {
+            showToast(data.message || 'Gagal menghapus informasi!', 'error');
+        }
+    })
+    .catch(() => showToast('Terjadi kesalahan jaringan!', 'error'));
 }
 </script>
 
