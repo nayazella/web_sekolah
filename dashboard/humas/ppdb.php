@@ -15,28 +15,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'terima' && $id_daftar > 0) {
         $db->beginTransaction();
         try {
-            // Update status pendaftaran
             $stmt = $db->prepare("UPDATE pendaftaran SET status = 'diterima', catatan = ? WHERE id_daftar = ?");
             $stmt->execute([$catatan, $id_daftar]);
 
-            // Ambil data pendaftar
             $stmt = $db->prepare("SELECT * FROM pendaftaran WHERE id_daftar = ?");
             $stmt->execute([$id_daftar]);
             $pendaftar = $stmt->fetch();
 
             if ($pendaftar && $pendaftar['id_user']) {
-                // Buat data siswa (NIS disiapkan, tapi akun belum aktif sebagai siswa)
                 $nis = '2024' . str_pad($id_daftar, 3, '0', STR_PAD_LEFT);
                 $stmt = $db->prepare("INSERT INTO siswa (nis, nama_lengkap, jenis_kelamin, tempat_lahir, tanggal_lahir, kelas, alamat, no_telepon, id_user) VALUES (?, ?, ?, ?, ?, '7A', ?, ?, ?)");
                 $stmt->execute([
-                    $nis,
-                    $pendaftar['nama_lengkap'],
-                    $pendaftar['jenis_kelamin'],
-                    $pendaftar['tempat_lahir'],
-                    $pendaftar['tanggal_lahir'],
-                    $pendaftar['alamat'],
-                    $pendaftar['no_telepon'],
-                    $pendaftar['id_user']
+                    $nis, $pendaftar['nama_lengkap'], $pendaftar['jenis_kelamin'],
+                    $pendaftar['tempat_lahir'], $pendaftar['tanggal_lahir'], $pendaftar['alamat'],
+                    $pendaftar['no_telepon'], $pendaftar['id_user']
                 ]);
             }
 
@@ -106,36 +98,24 @@ require_once __DIR__ . '/../../includes/sidebar.php';
         <!-- Statistik PPDB -->
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="stat-info">
-                    <h3>Total Pendaftar</h3>
-                    <div class="stat-value"><?php echo $stats['total']; ?></div>
-                </div>
+                <div class="stat-info"><h3>Total Pendaftar</h3><div class="stat-value"><?php echo $stats['total']; ?></div></div>
                 <div class="stat-icon green"><i class="fas fa-users"></i></div>
             </div>
             <div class="stat-card">
-                <div class="stat-info">
-                    <h3>Menunggu</h3>
-                    <div class="stat-value"><?php echo $stats['menunggu']; ?></div>
-                </div>
+                <div class="stat-info"><h3>Menunggu</h3><div class="stat-value"><?php echo $stats['menunggu']; ?></div></div>
                 <div class="stat-icon yellow"><i class="fas fa-hourglass-half"></i></div>
             </div>
             <div class="stat-card">
-                <div class="stat-info">
-                    <h3>Diterima</h3>
-                    <div class="stat-value"><?php echo $stats['diterima']; ?></div>
-                </div>
+                <div class="stat-info"><h3>Diterima</h3><div class="stat-value"><?php echo $stats['diterima']; ?></div></div>
                 <div class="stat-icon blue"><i class="fas fa-user-check"></i></div>
             </div>
             <div class="stat-card">
-                <div class="stat-info">
-                    <h3>Ditolak</h3>
-                    <div class="stat-value"><?php echo $stats['ditolak']; ?></div>
-                </div>
+                <div class="stat-info"><h3>Ditolak</h3><div class="stat-value"><?php echo $stats['ditolak']; ?></div></div>
                 <div class="stat-icon red"><i class="fas fa-user-times"></i></div>
             </div>
         </div>
 
-        <!-- Filter -->
+        <!-- Filter & Tabel (Tetap sama) -->
         <div class="card mb-2">
             <div class="card-body">
                 <div class="filter-bar">
@@ -151,27 +131,16 @@ require_once __DIR__ . '/../../includes/sidebar.php';
             </div>
         </div>
 
-        <!-- Tabel Pendaftar -->
         <div class="card">
             <div class="card-body" style="padding:0;">
                 <?php if (empty($pendaftar_list)): ?>
-                    <div class="empty-state">
-                        <i class="fas fa-user-graduate"></i>
-                        <h3>Belum ada pendaftar</h3>
-                        <p>Data pendaftaran PPDB akan muncul di sini.</p>
-                    </div>
+                    <div class="empty-state"><i class="fas fa-user-graduate"></i><h3>Belum ada pendaftar</h3><p>Data pendaftaran PPDB akan muncul di sini.</p></div>
                 <?php else: ?>
                     <div class="table-responsive">
                         <table class="data-table" id="ppdbTable">
                             <thead>
                                 <tr>
-                                    <th>No</th>
-                                    <th>Nama Lengkap</th>
-                                    <th>Jenis Kelamin</th>
-                                    <th>Asal Sekolah</th>
-                                    <th>No. Telepon</th>
-                                    <th>Status</th>
-                                    <th>Aksi</th>
+                                    <th>No</th><th>Nama Lengkap</th><th>Jenis Kelamin</th><th>Asal Sekolah</th><th>No. Telepon</th><th>Status</th><th>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -194,13 +163,9 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                 <button class="btn btn-sm btn-success" onclick="openTerimaModal(<?php echo $p['id_daftar']; ?>)" title="Terima"><i class="fas fa-check"></i></button>
                                                 <button class="btn btn-sm btn-danger" onclick="openTolakModal(<?php echo $p['id_daftar']; ?>)" title="Tolak"><i class="fas fa-times"></i></button>
                                             <?php elseif ($p['status'] === 'diterima'): ?>
-                                                <button class="btn btn-sm btn-warning" onclick="openCetakKartuModal(<?php echo $p['id_daftar']; ?>)" title="Cetak Kartu Verifikasi">
-                                                    <i class="fas fa-print"></i> 
-                                                </button>
+                                                <button class="btn btn-sm btn-warning" onclick="openCetakKartuModal(<?php echo $p['id_daftar']; ?>)" title="Cetak Kartu Verifikasi"><i class="fas fa-print"></i></button>
                                             <?php endif; ?>
-                                            <button class="btn btn-sm btn-danger" onclick="deletePendaftar(<?php echo $p['id_daftar']; ?>)" title="Hapus Pendaftar">
-                                            <i class="fas fa-trash"></i>
-                                            </button>
+                                            <button class="btn btn-sm btn-danger" onclick="deletePendaftar(<?php echo $p['id_daftar']; ?>)" title="Hapus Pendaftar"><i class="fas fa-trash"></i></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -217,26 +182,14 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 <!-- Modal Terima -->
 <div class="modal-overlay" id="terimaModal">
     <div class="modal">
-        <div class="modal-header">
-            <h3>Terima Pendaftar</h3>
-            <button class="modal-close" onclick="closeModal('terimaModal')"><i class="fas fa-times"></i></button>
-        </div>
+        <div class="modal-header"><h3>Terima Pendaftar</h3><button class="modal-close" onclick="closeModal('terimaModal')"><i class="fas fa-times"></i></button></div>
         <form method="POST">
             <div class="modal-body">
-                <input type="hidden" name="action" value="terima">
-                <input type="hidden" name="id_daftar" id="terima_id_daftar">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i> Pendaftar yang diterima TIDAK langsung menjadi siswa. Anda harus mencetak Kartu Verifikasi dan memberikannya ke siswa untuk mengaktifkan akun mereka.
-                </div>
-                <div class="form-group">
-                    <label>Catatan (Opsional)</label>
-                    <textarea name="catatan" class="form-control" rows="3" placeholder="Contoh: Diterima di kelas 7A"></textarea>
-                </div>
+                <input type="hidden" name="action" value="terima"><input type="hidden" name="id_daftar" id="terima_id_daftar">
+                <div class="alert alert-info"><i class="fas fa-info-circle"></i> Pendaftar yang diterima TIDAK langsung menjadi siswa. Anda harus mencetak Kartu Verifikasi dan memberikannya ke siswa.</div>
+                <div class="form-group"><label>Catatan (Opsional)</label><textarea name="catatan" class="form-control" rows="3" placeholder="Contoh: Diterima di kelas 7A"></textarea></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('terimaModal')">Batal</button>
-                <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Terima</button>
-            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeModal('terimaModal')">Batal</button><button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Terima</button></div>
         </form>
     </div>
 </div>
@@ -244,23 +197,13 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 <!-- Modal Tolak -->
 <div class="modal-overlay" id="tolakModal">
     <div class="modal">
-        <div class="modal-header">
-            <h3>Tolak Pendaftar</h3>
-            <button class="modal-close" onclick="closeModal('tolakModal')"><i class="fas fa-times"></i></button>
-        </div>
+        <div class="modal-header"><h3>Tolak Pendaftar</h3><button class="modal-close" onclick="closeModal('tolakModal')"><i class="fas fa-times"></i></button></div>
         <form method="POST">
             <div class="modal-body">
-                <input type="hidden" name="action" value="tolak">
-                <input type="hidden" name="id_daftar" id="tolak_id_daftar">
-                <div class="form-group">
-                    <label>Alasan Penolakan</label>
-                    <textarea name="catatan" class="form-control" rows="3" placeholder="Masukkan alasan penolakan..." required></textarea>
-                </div>
+                <input type="hidden" name="action" value="tolak"><input type="hidden" name="id_daftar" id="tolak_id_daftar">
+                <div class="form-group"><label>Alasan Penolakan</label><textarea name="catatan" class="form-control" rows="3" placeholder="Masukkan alasan penolakan..." required></textarea></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal('tolakModal')">Batal</button>
-                <button type="submit" class="btn btn-danger"><i class="fas fa-times"></i> Tolak</button>
-            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeModal('tolakModal')">Batal</button><button type="submit" class="btn btn-danger"><i class="fas fa-times"></i> Tolak</button></div>
         </form>
     </div>
 </div>
@@ -268,34 +211,38 @@ require_once __DIR__ . '/../../includes/sidebar.php';
 <!-- Modal Detail PPDB -->
 <div class="modal-overlay" id="detailPPDBModal">
     <div class="modal">
-        <div class="modal-header">
-            <h3>Detail Pendaftar</h3>
-            <button class="modal-close" onclick="closeModal('detailPPDBModal')"><i class="fas fa-times"></i></button>
-        </div>
+        <div class="modal-header"><h3>Detail Pendaftar</h3><button class="modal-close" onclick="closeModal('detailPPDBModal')"><i class="fas fa-times"></i></button></div>
         <div class="modal-body" id="detailPPDBContent"></div>
-        <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeModal('detailPPDBModal')">Tutup</button>
-        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeModal('detailPPDBModal')">Tutup</button></div>
     </div>
 </div>
 
 <!-- Modal Cetak Kartu Pop-up -->
 <div class="modal-overlay" id="cetakKartuModal">
     <div class="modal" style="max-width: 500px;">
-        <div class="modal-header">
-            <h3>Cetak Kartu Verifikasi</h3>
-            <button class="modal-close" onclick="closeModal('cetakKartuModal')"><i class="fas fa-times"></i></button>
+        <div class="modal-header"><h3>Cetak Kartu Verifikasi</h3><button class="modal-close" onclick="closeModal('cetakKartuModal')"><i class="fas fa-times"></i></button></div>
+        <div class="modal-body" id="cetakKartuContent" style="display:flex; justify-content:center; background:#f9f9f9; padding:20px;"><p>Memuat data kartu...</p></div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('cetakKartuModal')"><i class="fas fa-times"></i> Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="printKartu()"><i class="fas fa-print"></i> Cetak</button>
         </div>
-        <div class="modal-body" id="cetakKartuContent" style="display:flex; justify-content:center; background:#f9f9f9; padding:20px;">
-            <p>Memuat data kartu...</p>
+    </div>
+</div>
+
+<!-- MODAL PREVIEW DOKUMEN (TAMBAHAN) -->
+<div class="modal-overlay" id="previewModal">
+    <div class="modal" style="max-width: 800px; height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+            <h3 id="previewTitle">Preview Dokumen</h3>
+            <button class="modal-close" onclick="closePreviewModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" style="flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; padding: 10px; background: #e9ecef;">
+            <img id="previewImg" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+            <iframe id="previewPdf" src="" style="width: 100%; height: 100%; border: none; display: none;"></iframe>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" onclick="closeModal('cetakKartuModal')">
-                <i class="fas fa-times"></i> Cancel
-            </button>
-            <button type="button" class="btn btn-primary" onclick="printKartu()">
-                <i class="fas fa-print"></i> Cetak
-            </button>
+            <a id="previewDownload" href="" download class="btn btn-primary" style="display: none;"><i class="fas fa-download"></i> Download File</a>
+            <button type="button" class="btn btn-secondary" onclick="closePreviewModal()">Tutup</button>
         </div>
     </div>
 </div>
@@ -321,7 +268,7 @@ function openDetailPPDB(id) {
                 const statusLabel = {'menunggu':'Menunggu','diterima':'Diterima','ditolak':'Ditolak'};
                 
                 // ==========================================
-                // LOGICA MENAMPILKAN DOKUMEN UPLOAD
+                // LOGICA MENAMPILKAN DOKUMEN UPLOAD (DENGAN PREVIEW)
                 // ==========================================
                 let dokumenHTML = '';
                 const baseUrl = '/web_sekolah/uploads/dokumen_ppdb/';
@@ -329,7 +276,7 @@ function openDetailPPDB(id) {
                 if (p.foto_kk || p.foto_akte || p.foto_rapor) {
                     dokumenHTML += `
                         <div style="margin-top: 25px; border-top: 2px solid #eee; padding-top: 20px;">
-                            <h4 style="color: var(--primary); margin-bottom: 15px;"><i class="fas fa-paperclip"></i> Dokumen Upload Siswa</h4>
+                            <h4 style="color: var(--primary); margin-bottom: 15px;"><i class="fas fa-paperclip"></i> Dokumen Upload Siswa <small style="color: #6c757d; font-weight:normal;">(Klik untuk preview)</small></h4>
                             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                     `;
                     
@@ -337,11 +284,9 @@ function openDetailPPDB(id) {
                     if (p.foto_kk) {
                         let isPdf = p.foto_kk.split('.').pop().toLowerCase() === 'pdf';
                         dokumenHTML += `
-                            <div style="text-align: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #f8f9fa;">
-                                <a href="${baseUrl}${p.foto_kk}" target="_blank" download style="text-decoration:none; color:inherit;">
-                                    ${isPdf ? '<i class="fas fa-file-pdf" style="font-size:3.5rem; color:red;"></i>' : `<img src="${baseUrl}${p.foto_kk}" style="max-width: 130px; max-height: 100px; border-radius:5px; object-fit: cover;">`}
-                                    <br><small style="margin-top:5px; display:block;">Kartu Keluarga <i class="fas fa-download"></i></small>
-                                </a>
+                            <div onclick="openPreviewModal('${baseUrl}${p.foto_kk}', 'Kartu Keluarga')" style="text-align: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                ${isPdf ? '<i class="fas fa-file-pdf" style="font-size:3.5rem; color:red;"></i>' : `<img src="${baseUrl}${p.foto_kk}" style="max-width: 130px; max-height: 100px; border-radius:5px; object-fit: cover;">`}
+                                <br><small style="margin-top:8px; display:block; font-weight:600;">Kartu Keluarga <i class="fas fa-search-plus"></i></small>
                             </div>
                         `;
                     }
@@ -350,11 +295,9 @@ function openDetailPPDB(id) {
                     if (p.foto_akte) {
                         let isPdf = p.foto_akte.split('.').pop().toLowerCase() === 'pdf';
                         dokumenHTML += `
-                            <div style="text-align: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #f8f9fa;">
-                                <a href="${baseUrl}${p.foto_akte}" target="_blank" download style="text-decoration:none; color:inherit;">
-                                    ${isPdf ? '<i class="fas fa-file-pdf" style="font-size:3.5rem; color:red;"></i>' : `<img src="${baseUrl}${p.foto_akte}" style="max-width: 130px; max-height: 100px; border-radius:5px; object-fit: cover;">`}
-                                    <br><small style="margin-top:5px; display:block;">Akte Kelahiran <i class="fas fa-download"></i></small>
-                                </a>
+                            <div onclick="openPreviewModal('${baseUrl}${p.foto_akte}', 'Akte Kelahiran')" style="text-align: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                ${isPdf ? '<i class="fas fa-file-pdf" style="font-size:3.5rem; color:red;"></i>' : `<img src="${baseUrl}${p.foto_akte}" style="max-width: 130px; max-height: 100px; border-radius:5px; object-fit: cover;">`}
+                                <br><small style="margin-top:8px; display:block; font-weight:600;">Akte Kelahiran <i class="fas fa-search-plus"></i></small>
                             </div>
                         `;
                     }
@@ -366,11 +309,9 @@ function openDetailPPDB(id) {
                             if(r.trim() !== '') {
                                 let isPdf = r.split('.').pop().toLowerCase() === 'pdf';
                                 dokumenHTML += `
-                                    <div style="text-align: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #f8f9fa;">
-                                        <a href="${baseUrl}${r}" target="_blank" download style="text-decoration:none; color:inherit;">
-                                            ${isPdf ? '<i class="fas fa-file-pdf" style="font-size:3.5rem; color:red;"></i>' : `<img src="${baseUrl}${r}" style="max-width: 130px; max-height: 100px; border-radius:5px; object-fit: cover;">`}
-                                            <br><small style="margin-top:5px; display:block;">Rapor ${index+1} <i class="fas fa-download"></i></small>
-                                        </a>
+                                    <div onclick="openPreviewModal('${baseUrl}${r}', 'Rapor ${index+1}')" style="text-align: center; padding: 10px; border: 1px solid #ddd; border-radius: 8px; background: #f8f9fa; cursor: pointer; transition: 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                        ${isPdf ? '<i class="fas fa-file-pdf" style="font-size:3.5rem; color:red;"></i>' : `<img src="${baseUrl}${r}" style="max-width: 130px; max-height: 100px; border-radius:5px; object-fit: cover;">`}
+                                        <br><small style="margin-top:8px; display:block; font-weight:600;">Rapor ${index+1} <i class="fas fa-search-plus"></i></small>
                                     </div>
                                 `;
                             }
@@ -396,28 +337,56 @@ function openDetailPPDB(id) {
                         ${p.catatan ? `<div class="detail-item"><span class="detail-label">Catatan</span><span class="detail-value">${p.catatan}</span></div>` : ''}
                     </div>
                     
-                    ${dokumenHTML} <!-- Sisipkan dokumen di sini -->
+                    ${dokumenHTML} 
                 `;
                 openModal('detailPPDBModal');
             }
         });
 }
 
+// Fungsi Modal Preview Dokumen
+function openPreviewModal(url, title) {
+    document.getElementById('previewTitle').innerText = title || 'Preview Dokumen';
+    const imgEl = document.getElementById('previewImg');
+    const pdfEl = document.getElementById('previewPdf');
+    const dlEl = document.getElementById('previewDownload');
+
+    imgEl.style.display = 'none';
+    pdfEl.style.display = 'none';
+    dlEl.style.display = 'none';
+
+    if (url.toLowerCase().endsWith('.pdf')) {
+        pdfEl.src = url;
+        pdfEl.style.display = 'block';
+    } else {
+        imgEl.src = url;
+        imgEl.style.display = 'block';
+    }
+    
+    // Set link download
+    dlEl.href = url;
+    dlEl.style.display = 'inline-block';
+
+    openModal('previewModal');
+}
+
+function closePreviewModal() {
+    document.getElementById('previewImg').src = '';
+    document.getElementById('previewPdf').src = '';
+    closeModal('previewModal');
+}
+
 function openCetakKartuModal(id) {
     document.getElementById('cetakKartuContent').innerHTML = '<p>Memuat data kartu...</p>';
     openModal('cetakKartuModal');
-
     fetch(`/web_sekolah/dashboard/humas/cetak_kartu.php?ajax=1&id=${id}`)
         .then(r => r.text())
-        .then(html => {
-            document.getElementById('cetakKartuContent').innerHTML = html;
-        })
+        .then(html => { document.getElementById('cetakKartuContent').innerHTML = html; })
         .catch(() => showToast('Gagal memuat data kartu!', 'error'));
 }
 
 function deletePendaftar(id) {
     if (!confirm('Yakin ingin menghapus data pendaftar ini?')) return;
-
     fetch('/web_sekolah/actions/ppdb_action.php?action=delete', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -428,21 +397,14 @@ function deletePendaftar(id) {
         if (data.success) {
             showToast('Data pendaftar berhasil dihapus', 'success');
             const row = document.querySelector(`button[onclick="deletePendaftar(${id})"]`).closest('tr');
-            if (row) {
-                row.style.opacity = '0';
-                row.style.transition = 'opacity 0.3s ease';
-                setTimeout(() => row.remove(), 300);
-            }
-        } else {
-            showToast(data.message || 'Gagal menghapus data!', 'error');
-        }
+            if (row) { row.style.opacity = '0'; row.style.transition = 'opacity 0.3s ease'; setTimeout(() => row.remove(), 300); }
+        } else { showToast(data.message || 'Gagal menghapus data!', 'error'); }
     })
     .catch(() => showToast('Terjadi kesalahan jaringan!', 'error'));
 }
 
 function printKartu() {
     const content = document.getElementById('cetakKartuContent').innerHTML;
-    
     const printWindow = window.open('', '', 'height=600,width=400');
     printWindow.document.write('<html><head><title>Cetak Kartu Verifikasi</title>');
     printWindow.document.write(`
@@ -462,18 +424,11 @@ function printKartu() {
     printWindow.document.write(content);
     printWindow.document.write('</body></html>');
     printWindow.document.close();
-    
     printWindow.print();
-    
-    printWindow.onafterprint = function() {
-        printWindow.close();
-        closeModal('cetakKartuModal');
-    };
+    printWindow.onafterprint = function() { printWindow.close(); closeModal('cetakKartuModal'); };
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    filterTable('searchPPDB', 'ppdbTable');
-});
+document.addEventListener('DOMContentLoaded', function() { filterTable('searchPPDB', 'ppdbTable'); });
 </script>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>
