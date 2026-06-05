@@ -69,7 +69,8 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                         <td><strong><?php echo htmlspecialchars($kat['nama_kategori']); ?></strong></td>
                                         <td><?php echo htmlspecialchars($kat['deskripsi'] ?? '-'); ?></td>
                                         <td>
-                                            <span class="badge badge-primary" style="cursor: pointer; font-size: 0.85rem; padding: 6px 12px;" onclick="openListInformasi(<?php echo $kat['id_kategori']; ?>, '<?php echo htmlspecialchars(addslashes($kat['nama_kategori'])); ?>')">
+                                            <!-- PERBAIKAN: Tambahkan id unik pada badge berdasarkan id_kategori -->
+                                            <span id="badge-kat-<?php echo $kat['id_kategori']; ?>" class="badge badge-primary" style="cursor: pointer; font-size: 0.85rem; padding: 6px 12px;" onclick="openListInformasi(<?php echo $kat['id_kategori']; ?>, '<?php echo htmlspecialchars(addslashes($kat['nama_kategori'])); ?>')">
                                                 <?php echo $kat['jumlah_informasi']; ?> informasi <i class="fas fa-arrow-right" style="margin-left:5px;"></i>
                                             </span>
                                         </td>
@@ -207,7 +208,7 @@ function deleteKategori(id) {
     }
 }
 
-// FUNGSI MODAL LIST INFORMASI (DENGAN TOMBOL HAPUS)
+// FUNGSI MODAL LIST INFORMASI
 function openListInformasi(id_kategori, nama_kategori) {
     document.getElementById('listInfoTitle').innerText = `Informasi Kategori: ${nama_kategori}`;
     document.getElementById('listInfoBody').innerHTML = '<p>Memuat data informasi...</p>';
@@ -226,7 +227,7 @@ function openListInformasi(id_kategori, nama_kategori) {
                     const statusLabel = {'draft':'Draft','menunggu_persetujuan':'Menunggu','disetujui':'Disetujui','ditolak':'Ditolak'};
 
                     data.data.forEach(info => {
-                        // PERBAIKAN: Layout flex agar tombol hapus sejajar di kanan
+                        // PERBAIKAN: Kirim id_kategori ke fungsi unlink
                         html += `
                             <div id="info-row-${info.id_info}" style="border:1px solid #e0e0e0; padding:15px; border-radius:8px; background:#ffffff; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                                 <div style="flex:1; margin-right:15px;">
@@ -239,8 +240,8 @@ function openListInformasi(id_kategori, nama_kategori) {
                                         <span><i class="fas fa-calendar-alt"></i> ${info.tanggal || '-'}</span>
                                     </div>
                                 </div>
-                                <button class="btn btn-sm btn-danger" onclick="deleteInfoFromKategori(${info.id_info})" title="Hapus Informasi" style="flex-shrink:0;">
-                                    <i class="fas fa-trash"></i>
+                                <button class="btn btn-sm btn-warning" onclick="unlinkInfoFromKategori(${info.id_info}, ${id_kategori})" title="Lepas dari Kategori">
+                                    <i class="fas fa-unlink"></i>
                                 </button>
                             </div>
                         `;
@@ -255,11 +256,11 @@ function openListInformasi(id_kategori, nama_kategori) {
         .catch(() => showToast('Terjadi kesalahan jaringan!', 'error'));
 }
 
-// FUNGSI HAPUS INFORMASI DARI MODAL KATEGORI
-function deleteInfoFromKategori(id_info) {
-    if (!confirm('Yakin ingin menghapus informasi ini secara permanen?')) return;
+// FUNGSI LEPAS INFORMASI DARI KATEGORI (DENGAN UPDATE REAL-TIME)
+function unlinkInfoFromKategori(id_info, id_kategori) {
+    if (!confirm('Lepas informasi ini dari kategori? (Data informasi tetap ada, hanya kategorinya yang dikosongkan)')) return;
 
-    fetch('/web_sekolah/actions/informasi_action.php?action=delete', {
+    fetch('/web_sekolah/actions/kategori_action.php?action=unlink_info', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'id_info=' + id_info
@@ -267,8 +268,9 @@ function deleteInfoFromKategori(id_info) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            showToast(data.message || 'Informasi berhasil dihapus!', 'success');
-            // Hilangkan baris informasi dari modal dengan animasi
+            showToast(data.message || 'Informasi berhasil dilepas!', 'success');
+            
+            // 1. Hilangkan baris dari modal dengan animasi
             const row = document.getElementById('info-row-' + id_info);
             if (row) {
                 row.style.opacity = '0';
@@ -276,8 +278,22 @@ function deleteInfoFromKategori(id_info) {
                 row.style.transition = 'all 0.3s ease';
                 setTimeout(() => row.remove(), 300);
             }
+
+            // 2. Update angka pada badge di tabel utama secara real-time
+            const badge = document.getElementById('badge-kat-' + id_kategori);
+            if (badge) {
+                // Ambil angka saat ini dari teks badge (contoh: "5 informasi" -> "5")
+                let currentText = badge.innerText.match(/\d+/)[0];
+                let newCount = parseInt(currentText) - 1;
+                
+                // Jika mencapai 0, biarkan 0
+                if (newCount < 0) newCount = 0;
+                
+                // Update isi HTML badge
+                badge.innerHTML = `${newCount} informasi <i class="fas fa-arrow-right" style="margin-left:5px;"></i>`;
+            }
         } else {
-            showToast(data.message || 'Gagal menghapus informasi!', 'error');
+            showToast(data.message || 'Gagal melepas informasi!', 'error');
         }
     })
     .catch(() => showToast('Terjadi kesalahan jaringan!', 'error'));
